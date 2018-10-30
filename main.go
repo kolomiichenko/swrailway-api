@@ -75,8 +75,14 @@ func GetShedule(date, lang, from, to string, onlyRemaining bool) []sheduleStruct
 
 func removeMissed(shedule []sheduleStruct) []sheduleStruct {
 	var ret []sheduleStruct
-	hoursNow := time.Now().Format("15")
-	minutesNow := time.Now().Format("04")
+
+	loc, err := time.LoadLocation("Europe/Kiev")
+	if err != nil {
+		panic(err)
+	}
+
+	hoursNow := time.Now().In(loc).Format("15")
+	minutesNow := time.Now().In(loc).Format("04")
 
 	for _, s := range shedule {
 
