@@ -2,6 +2,7 @@ package swrailway
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -22,16 +23,22 @@ type (
 		Label string `json:"label"`
 	}
 	sheduleStruct struct {
-		ID            string // td[0]
-		Period        string // td[1]
-		Route         string // td[2]
-		ArrivalFrom   string // td[3]
-		DepartureFrom string // td[4]
-		ArrivalTo     string // td[5]
-		DepartureTo   string // td[6]
-		TimeInTrip    string // td[7]
-		ActiveFrom    string // td[8]
-		ActiveTo      string // td[9]
+		ID     string // td[0]
+		Period string // td[1]
+		Route  string // td[2]
+
+		ArrivalFrom        string // td[3]
+		ArrivalStationFrom string // td[4]
+		DepartureFrom      string // td[5]
+
+		ArrivalTo        string // td[6]
+		ArrivalStationTo string // td[7]
+		DepartureTo      string // td[8]
+
+		TimeInTrip string // td[9]
+		Distance   string // td[10]
+		ActiveFrom string // td[11]
+		ActiveTo   string // td[12]
 	}
 )
 
@@ -106,7 +113,7 @@ func parseShedule(body []byte) []sheduleStruct {
 	if err != nil {
 		log.Fatal(err)
 	}
-	selector := "body > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(2) > td:nth-child(2) > table > tbody > tr > td > table:nth-child(1) > tbody > tr:nth-child(2) > td > center > table > tbody"
+	selector := "#geo2g > tbody"
 	doc.Find(selector).Each(func(i int, s *goquery.Selection) {
 		s.Find("tr:not(.pix)").Each(func(j int, row *goquery.Selection) {
 
@@ -125,16 +132,22 @@ func parseShedule(body []byte) []sheduleStruct {
 					case 3:
 						tmp.ArrivalFrom = strings.TrimSpace(col.Text())
 					case 4:
-						tmp.DepartureFrom = strings.TrimSpace(col.Text())
+						tmp.ArrivalStationFrom = strings.TrimSpace(col.Text())
 					case 5:
-						tmp.ArrivalTo = strings.TrimSpace(col.Text())
+						tmp.DepartureFrom = strings.TrimSpace(col.Text())
 					case 6:
-						tmp.DepartureTo = strings.TrimSpace(col.Text())
+						tmp.ArrivalTo = strings.TrimSpace(col.Text())
 					case 7:
-						tmp.TimeInTrip = strings.TrimSpace(col.Text())
+						tmp.ArrivalStationTo = strings.TrimSpace(col.Text())
 					case 8:
-						tmp.ActiveFrom = strings.TrimSpace(col.Text())
+						tmp.DepartureTo = strings.TrimSpace(col.Text())
 					case 9:
+						tmp.TimeInTrip = strings.TrimSpace(col.Text())
+					case 10:
+						tmp.Distance = strings.TrimSpace(col.Text())
+					case 11:
+						tmp.ActiveFrom = strings.TrimSpace(col.Text())
+					case 12:
 						tmp.ActiveTo = strings.TrimSpace(col.Text())
 					}
 
@@ -187,14 +200,22 @@ func apiRequest(httpMethod string, request obj) []byte {
 		requestStr = "?" + requestStr[1:len(requestStr)]
 	}
 
-	reqURL := "http://swrailway.gov.ua/timetable/eltrain/" + requestStr
+	reqURL := "https://swrailway.gov.ua/timetable/eltrain/" + requestStr
 
 	req, err := http.NewRequest(httpMethod, reqURL, bytes.NewBuffer([]byte{}))
 
-	req.Header.Set("Referer", "http://swrailway.gov.ua/timetable/eltrain/")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36")
 
-	client := &http.Client{}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	client := &http.Client{
+		Transport: tr,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err.Error())
